@@ -1,4 +1,4 @@
-# Profile Pic Maker
+# ProfileCropper
 
 A single-page web app for turning any image into a cropped profile picture. Bring
 an image in, position a circle or square mask over a rotated preview, watch a live
