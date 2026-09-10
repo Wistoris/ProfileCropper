@@ -64,6 +64,8 @@ export default function CanvasEditor({
 }) {
   const canvasRef = useRef(null)
   const dragRef = useRef(null) // { type: 'mask'|'handle', handleIdx, startX, startY, startCx, startCy, startR }
+  // Holds the single decoded HTMLImageElement so draw() never paints an unloaded image.
+  const imgRef = useRef(null)
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
@@ -78,9 +80,11 @@ export default function CanvasEditor({
     const cy = maskPos.y
     const r = maskRadius
 
-    if (image) {
-      const img = new window.Image()
-      img.src = image.dataUrl
+    // Only paint the bitmap when we have a decoded image ready in the ref.
+    // While decoding is pending imgRef.current is null and we fall through to
+    // the checkerboard placeholder so no blank frame is shown mid-drag.
+    if (image && imgRef.current) {
+      const img = imgRef.current
 
       // Compute letterbox scale
       const scale = Math.min(W / image.width, H / image.height)
@@ -151,19 +155,44 @@ export default function CanvasEditor({
     })
   }, [image, rotation, maskShape, maskPos, maskRadius])
 
-  // Redraw whenever relevant props change
+  // Keep a stable reference to the latest draw() so the decode effect can call it
+  // on load without listing draw as a dependency (which would re-run the decode
+  // and rebuild an Image on every prop change).
+  const drawRef = useRef(draw)
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
+    drawRef.current = draw
+  }, [draw])
 
-    if (image) {
-      const img = new window.Image()
-      img.onload = () => draw()
-      img.src = image.dataUrl
-    } else {
-      draw()
+  // Decode the image exactly once when its source changes and store the ready
+  // bitmap in a ref. This is the only place an Image is constructed; draw() reads
+  // the guaranteed-decoded bitmap from imgRef, so no frame paints an unloaded image.
+  useEffect(() => {
+    if (!image) {
+      // Reset so the placeholder checkerboard shows again when image is cleared.
+      imgRef.current = null
+      drawRef.current()
+      return
     }
-  }, [image, rotation, maskShape, maskPos, maskRadius, draw])
+
+    let cancelled = false
+    const img = new window.Image()
+    img.onload = () => {
+      if (cancelled) return
+      imgRef.current = img
+      drawRef.current()
+    }
+    img.src = image.dataUrl
+
+    return () => {
+      cancelled = true
+    }
+  }, [image])
+
+  // Redraw whenever mask/rotation props change. No Image is ever constructed here;
+  // the bitmap is already decoded in imgRef.
+  useEffect(() => {
+    draw()
+  }, [rotation, maskShape, maskPos, maskRadius, draw])
 
   function getCanvasPoint(e) {
     const canvas = canvasRef.current
