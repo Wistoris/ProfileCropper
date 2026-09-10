@@ -3,6 +3,8 @@ export default function Controls({
   onRotationChange,
   maskShape,
   onMaskShapeChange,
+  allowOutsideBoundary,
+  onAllowOutsideBoundaryChange,
   onDownload,
   hasImage,
 }) {
@@ -42,6 +44,18 @@ export default function Controls({
             Square
           </button>
         </div>
+      </div>
+
+      <div className="control-group">
+        <label>Boundary</label>
+        <label className="checkbox-row">
+          <input
+            type="checkbox"
+            checked={allowOutsideBoundary}
+            onChange={(e) => onAllowOutsideBoundaryChange(e.target.checked)}
+          />
+          <span>Allow cropping outside the image boundary</span>
+        </label>
       </div>
 
       <button className="download-btn" onClick={onDownload} disabled={!hasImage}>
