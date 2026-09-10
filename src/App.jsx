@@ -15,6 +15,7 @@ export default function App() {
   const [maskShape, setMaskShape] = useState('circle')
   const [maskPos, setMaskPos] = useState(DEFAULT_POS)
   const [maskRadius, setMaskRadius] = useState(DEFAULT_RADIUS)
+  const [allowOutsideBoundary, setAllowOutsideBoundary] = useState(true)
 
   const handleImageLoad = useCallback((img) => {
     setImage(img)
@@ -118,6 +119,7 @@ export default function App() {
                   maskPos={maskPos}
                   maskRadius={maskRadius}
                   onMaskChange={handleMaskChange}
+                  allowOutsideBoundary={allowOutsideBoundary}
                 />
               </div>
 
@@ -137,6 +139,8 @@ export default function App() {
                 onRotationChange={setRotation}
                 maskShape={maskShape}
                 onMaskShapeChange={setMaskShape}
+                allowOutsideBoundary={allowOutsideBoundary}
+                onAllowOutsideBoundaryChange={setAllowOutsideBoundary}
                 onDownload={handleDownload}
                 hasImage={!!image}
               />

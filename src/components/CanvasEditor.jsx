@@ -54,6 +54,52 @@ function hitTestMask(px, py, cx, cy, r, shape) {
   }
 }
 
+// Compute the image's on-canvas letterboxed footprint (half-dimensions) at the
+// current rotation. The image is drawn scaled-to-fit and centered at the canvas
+// center, then rotated around that center.
+function getImageBox(image) {
+  const scale = Math.min(CANVAS_SIZE / image.width, CANVAS_SIZE / image.height)
+  return {
+    halfW: (image.width * scale) / 2,
+    halfH: (image.height * scale) / 2,
+  }
+}
+
+// Clamp the mask (center + radius) so it stays inside the image's letterboxed
+// footprint. We work in the image's rotated local frame: the footprint is an
+// axis-aligned rectangle centered at the origin there, so clamping the mask's
+// bounding half-extent (r) inside it is straightforward and rotation-correct.
+function clampMaskToImage(cx, cy, r, image, rotation) {
+  const center = CANVAS_SIZE / 2
+  const { halfW, halfH } = getImageBox(image)
+
+  // Radius can never exceed the image's half-extent in either axis.
+  let clampedR = Math.min(r, halfW, halfH)
+  clampedR = Math.max(20, clampedR)
+
+  // Transform the mask center into the image's local (unrotated) frame.
+  const theta = (rotation * Math.PI) / 180
+  const cos = Math.cos(theta)
+  const sin = Math.sin(theta)
+  const dx = cx - center
+  const dy = cy - center
+  // Inverse rotation (rotate by -theta).
+  const localX = dx * cos + dy * sin
+  const localY = -dx * sin + dy * cos
+
+  // Clamp so the mask's bounding box stays inside the footprint rectangle.
+  const maxX = Math.max(0, halfW - clampedR)
+  const maxY = Math.max(0, halfH - clampedR)
+  const clampedLocalX = Math.max(-maxX, Math.min(maxX, localX))
+  const clampedLocalY = Math.max(-maxY, Math.min(maxY, localY))
+
+  // Transform back to canvas coordinates (rotate by +theta).
+  const clampedX = center + clampedLocalX * cos - clampedLocalY * sin
+  const clampedY = center + clampedLocalX * sin + clampedLocalY * cos
+
+  return { pos: { x: clampedX, y: clampedY }, radius: clampedR }
+}
+
 export default function CanvasEditor({
   image,
   rotation,
@@ -61,6 +107,7 @@ export default function CanvasEditor({
   maskPos,
   maskRadius,
   onMaskChange,
+  allowOutsideBoundary = true,
 }) {
   const canvasRef = useRef(null)
   const dragRef = useRef(null) // { type: 'mask'|'handle', handleIdx, startX, startY, startCx, startCy, startR }
@@ -233,6 +280,17 @@ export default function CanvasEditor({
     }
   }
 
+  function emitMaskChange(pos, radius) {
+    // When cropping outside the image is disabled, keep the mask within the
+    // image's on-canvas footprint. Only constrain once an image is loaded.
+    if (!allowOutsideBoundary && image) {
+      const clamped = clampMaskToImage(pos.x, pos.y, radius, image, rotation)
+      onMaskChange(clamped.pos, clamped.radius)
+    } else {
+      onMaskChange(pos, radius)
+    }
+  }
+
   function handlePointerMove(e) {
     const drag = dragRef.current
     if (!drag) return
@@ -243,14 +301,14 @@ export default function CanvasEditor({
       const dy = pt.y - drag.startY
       const newX = drag.startCx + dx
       const newY = drag.startCy + dy
-      onMaskChange({ x: newX, y: newY }, maskRadius)
+      emitMaskChange({ x: newX, y: newY }, maskRadius)
     } else if (drag.type === 'handle') {
       // Radius = distance from mask center to pointer
       const dx = pt.x - drag.startCx
       const dy = pt.y - drag.startCy
       let newR = Math.sqrt(dx * dx + dy * dy)
       newR = Math.max(20, newR)
-      onMaskChange(maskPos, newR)
+      emitMaskChange(maskPos, newR)
     }
   }
 
