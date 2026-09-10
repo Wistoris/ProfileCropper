@@ -174,6 +174,10 @@ export default function CanvasEditor({
       return
     }
 
+    // Clear the previous decoded bitmap so a redraw during the swap window shows
+    // the checkerboard placeholder instead of the stale old image against the new mask.
+    imgRef.current = null
+
     let cancelled = false
     const img = new window.Image()
     img.onload = () => {
