@@ -1,9 +1,11 @@
 name: Deploy to GitHub Pages
 
 on:
-  # Deploy on every push to the default branch
+  # Deploy on every push to the default branch. This repo's default branch is
+  # `master`; `main` is included too so the workflow keeps working if the
+  # default branch is ever switched.
   push:
-    branches: [main]
+    branches: [master, main]
   # Allow manual runs from the Actions tab
   workflow_dispatch:
 
