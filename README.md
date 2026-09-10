@@ -21,12 +21,14 @@ is no backend, and nothing is uploaded or persisted.
 
 ## Getting started
 
+You can use the tool [Here](https://wistoris.github.io/profile-pic-maker/)
+
+Or you can build and run it locally by following the below:
 Requires Node.js 22+.
 
 ```sh
 npm install     # install dependencies
 npm run dev     # start the Vite dev server
-npm run build   # produce a production build in dist/
 ```
 
 `npm run lint` runs Oxlint over the source.
